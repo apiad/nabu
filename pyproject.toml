@@ -1,0 +1,16 @@
+[project]
+name = "nabu"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi[standard]>=0.115.8",
+    "sqlmodel>=0.0.22",
+    "uvicorn[standard]>=0.34.0",
+]
+
+[dependency-groups]
+dev = [
+    "flet[all]>=0.27.1",
+]
