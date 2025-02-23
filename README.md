@@ -2,7 +2,17 @@
 
 **Nabu Voice Notes** is an open-source application designed for secure and private voice-based note-taking. Inspired by the ancient Mesopotamian god of writing and wisdom, Nabu empowers users to capture their thoughts and insights effortlessly while ensuring complete control over their data.
 
-## Features of the App
+## Usage
+
+You can use the app online at [nabu.apiad.net](https://nabu.apiad.net) or install the latest Android APK in the releases section.
+
+**NOTE:** While both clients share the same backend, there is no cloud-based backup of notes. This means if you log in with the same user in different devices, you will see and spend the same credits, but you will not see the same notes. This is by-design and will not change in the future. Nabu is privacy-first. If you want to sync your notes across devices, I will at some point implement a syncronization feature that doesn't depend on cloud storage.
+
+## Features
+
+Nabu is right now in development, alpha stage. These are the planned features.
+
+### Roadmap
 
 - **Local Storage**: All voice recordings, transcriptions, and post-processed notes are stored securely on your device, ensuring that your notes remain private and are never stored in the cloud.
 
@@ -22,9 +32,9 @@
 
 ## License
 
-Nabu Voice Notes is licensed CC-BY=SA-NC for open-source use, allowing you to run the software privately for individual, educational, or non-profit purposes, with attribution required.
+Nabu Voice Notes is licensed **Creative Commons 4.0 BY-SA-NC** for open-source use, allowing you to run the software privately for individual, educational, or non-profit purposes, with attribution required, and share-alike.
 
-In for-profit organizations or any form of commercial use, you must install the official app and utilize the official servers, which requires a subscription fee.
+In for-profit organizations or for any form of commercial use, you must install the official app and utilize the official servers.
 
 ## Pricing
 
