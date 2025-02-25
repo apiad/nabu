@@ -13,8 +13,3 @@ dependencies = [
     "streamlit>=1.42.2",
     "uvicorn[standard]>=0.34.0",
 ]
-
-[dependency-groups]
-dev = [
-    "flet[all]>=0.27.1",
-]

@@ -1,9 +1,11 @@
+import json
 import random
 import openai
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, UploadFile
 from pydantic import EmailStr
 from models import User
+import prompts
 from sqlmodel import SQLModel, Session, create_engine
 from aiosmtplib import SMTP
 from email.mime.multipart import MIMEMultipart
@@ -22,6 +24,10 @@ EMAIL_PORT = os.getenv("EMAIL_PORT")
 TRANSCRIPTION_API_HOST = os.getenv("TRANSCRIPTION_API_HOST")
 TRANSCRIPTION_API_MODEL = os.getenv("TRANSCRIPTION_API_MODEL")
 TRANSCRIPTION_API_KEY = os.getenv("TRANSCRIPTION_API_KEY")
+
+LLM_API_HOST = os.getenv("LLM_API_HOST")
+LLM_API_MODEL = os.getenv("LLM_API_MODEL")
+LLM_API_KEY = os.getenv("LLM_API_KEY")
 
 DATABASE_URL = "sqlite:///./database.db"
 
@@ -97,6 +103,22 @@ async def verify_otp(email: EmailStr, otp: str):
         return {"message": "User verified.", "token": user.token}
 
 
+async def process_note(transcription: str):
+    client = openai.AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_API_HOST)
+
+    messages = [
+        dict(role="system", content=prompts.PROOFREADING_PROMPT),
+        dict(role="user", content=transcription),
+    ]
+
+    response = await client.chat.completions.create(
+        model=LLM_API_MODEL,
+        messages=messages,
+    )
+
+    return response.choices[0].message.content
+
+
 @app.post("/transcribe")
 async def transcribe(email: EmailStr, token: str, file: UploadFile):
     with Session(engine) as session:
@@ -120,4 +142,6 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile):
         response_format="text",
     )
 
-    return {"transcription": transcription}
+    note = await process_note(transcription)
+
+    return {"transcription": transcription, "note": note}

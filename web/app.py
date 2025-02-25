@@ -5,11 +5,23 @@ import httpx
 st.set_page_config("Nabu Audio Notes", page_icon="🔊")
 
 
-def post(path, file=None, **kwargs):
+def post(path, **kwargs):
     api_url = st.secrets.get("api_url")
 
     with httpx.Client(base_url=api_url, timeout=30) as client:
         response = client.post(path, params=kwargs)
+        return response.json()
+
+
+def transcribe(file, **kwargs):
+    api_url = st.secrets.get("api_url")
+
+    with httpx.Client(base_url=api_url, timeout=300) as client:
+        response = client.post(
+            "/transcribe",
+            params=kwargs,
+            files=dict(file=("note.wav", file, "audio/wav")),
+        )
         return response.json()
 
 
@@ -63,4 +75,6 @@ if not audio:
     st.stop()
 
 if st.button("Create note", icon="📝"):
-    st.info("Gotcha!")
+    with st.spinner("Transcribing..."):
+        transcription = transcribe(email=username, token=token, file=audio.read())
+        st.success(transcription)
