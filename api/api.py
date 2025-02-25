@@ -1,6 +1,7 @@
 import random
+import openai
 from uuid import uuid4
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile
 from pydantic import EmailStr
 from models import User
 from sqlmodel import SQLModel, Session, create_engine
@@ -18,6 +19,10 @@ SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = os.getenv("EMAIL_PORT")
 
+TRANSCRIPTION_API_HOST = os.getenv("TRANSCRIPTION_API_HOST")
+TRANSCRIPTION_API_MODEL = os.getenv("TRANSCRIPTION_API_MODEL")
+TRANSCRIPTION_API_KEY = os.getenv("TRANSCRIPTION_API_KEY")
+
 DATABASE_URL = "sqlite:///./database.db"
 
 engine = create_engine(DATABASE_URL)
@@ -30,7 +35,7 @@ create_db_and_tables()
 app = FastAPI()
 
 
-@app.get("/login")
+@app.post("/login")
 async def login(email: EmailStr):
     otp = "".join([str(random.randint(0,9)) for _ in range(6)])
 
@@ -67,7 +72,7 @@ async def send_email(receiver_email, otp):
         await server.send_message(msg)
 
 
-@app.get("/verify")
+@app.post("/verify")
 async def verify_otp(email: EmailStr, otp: str):
     with Session(engine) as session:
         user: User = session.get(User, email)
@@ -88,3 +93,28 @@ async def verify_otp(email: EmailStr, otp: str):
         session.commit()
 
         return {"message": "User verified.", "token": user.token}
+
+
+@app.post("/transcribe")
+async def transcribe(email: EmailStr, token: str, file: UploadFile):
+    with Session(engine) as session:
+        user: User = session.get(User, email)
+
+        if user is None or user.token != token:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if file.content_type != "audio/wav":
+        raise HTTPException(status_code=400, detail="Invalid file type")
+
+    audio = await file.read()
+
+    # TODO: Transcribe audio
+    client = openai.AsyncOpenAI(api_key=TRANSCRIPTION_API_KEY, base_url=TRANSCRIPTION_API_HOST)
+
+    transcription = await client.audio.transcriptions.create(
+        model=TRANSCRIPTION_API_MODEL,
+        file=audio,
+        response_format="text",
+    )
+
+    return {"transcription": transcription }
