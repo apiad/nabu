@@ -27,8 +27,10 @@ DATABASE_URL = "sqlite:///./database.db"
 
 engine = create_engine(DATABASE_URL)
 
+
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
+
 
 create_db_and_tables()
 
@@ -37,7 +39,7 @@ app = FastAPI()
 
 @app.post("/login")
 async def login(email: EmailStr):
-    otp = "".join([str(random.randint(0,9)) for _ in range(6)])
+    otp = "".join([str(random.randint(0, 9)) for _ in range(6)])
 
     with Session(engine) as session:
         user: User = session.get(User, email)
@@ -57,12 +59,12 @@ async def login(email: EmailStr):
 async def send_email(receiver_email, otp):
     """Send OTP via email using Migadu SMTP asynchronously."""
     msg = MIMEMultipart()
-    msg['From'] = SENDER_EMAIL
-    msg['To'] = receiver_email
-    msg['Subject'] = "OTP Verification"
+    msg["From"] = SENDER_EMAIL
+    msg["To"] = receiver_email
+    msg["Subject"] = "OTP Verification"
 
     body = f"Your OTP for Nabu Voice Notes is:\n\n{otp}"
-    msg.attach(MIMEText(body, 'plain'))
+    msg.attach(MIMEText(body, "plain"))
 
     smtp_server = EMAIL_HOST
     port = int(EMAIL_PORT)
@@ -108,8 +110,9 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile):
 
     audio = await file.read()
 
-    # TODO: Transcribe audio
-    client = openai.AsyncOpenAI(api_key=TRANSCRIPTION_API_KEY, base_url=TRANSCRIPTION_API_HOST)
+    client = openai.AsyncOpenAI(
+        api_key=TRANSCRIPTION_API_KEY, base_url=TRANSCRIPTION_API_HOST
+    )
 
     transcription = await client.audio.transcriptions.create(
         model=TRANSCRIPTION_API_MODEL,
@@ -117,4 +120,4 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile):
         response_format="text",
     )
 
-    return {"transcription": transcription }
+    return {"transcription": transcription}
