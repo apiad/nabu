@@ -112,7 +112,7 @@ with notes_tab:
     for note in notes:
         with st.expander(note["title"]):
             if st.toggle("Raw mode", key=note["id"] + "_raw"):
-                st.code(note["content"], wrap_lines=True)
+                st.code(note["content"], wrap_lines=True, language="markdown")
             else:
                 st.write(note["content"])
 
@@ -133,20 +133,23 @@ with st.sidebar:
     credits = get("/credits", email=username, token=token)
     st.write(f"## **Credits**: {credits['remaining']}")
 
-    st.link_button(
-        "Get more credits",
-        "https://apiad.gumroad.com/l/nabu-100",
-        icon="💸",
-    )
-
-    st.write("### Add a credit pack")
+    st.write("### Add credits")
 
     pack = st.selectbox(
         "Pack", ["100 Credits", "250 Credits", "500 Credits", "1000 Credits"], index=0
     )
+
+    st.link_button(
+        f"Buy a {pack} Pack",
+        f"https://apiad.gumroad.com/l/nabu-{pack.split()[0]}",
+        icon="💸",
+    )
+
+    st.write(f"#### Enter your {pack} Pack info")
+
     key = st.text_input("Key", type="password")
 
-    if st.button("Add", icon="💸"):
+    if st.button(f"Add {pack}", icon="💸"):
         add_credits = post(
             "/credits",
             email=username,

@@ -1,4 +1,5 @@
 import json
+import math
 import httpx
 import random
 import openai
@@ -124,7 +125,10 @@ async def process_note(transcription: str):
         response_format={"type": "json_object"},
     )
 
-    return json.loads(response.choices[0].message.content)
+    data = json.loads(response.choices[0].message.content)
+    data['cost'] = math.ceil(response.usage.total_tokens / 1000)
+
+    return data
 
 
 @app.post("/transcribe")
@@ -135,32 +139,38 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile) -> Note:
         if user is None or user.token != token:
             raise HTTPException(status_code=401, detail="Unauthorized")
 
-    if file.content_type != "audio/wav":
-        raise HTTPException(status_code=400, detail="Invalid file type")
+        if file.content_type != "audio/wav":
+            raise HTTPException(status_code=400, detail="Invalid file type")
 
-    audio = await file.read()
+        if user.credits <= 0:
+            raise HTTPException(status_code=402, detail="Insufficient credits")
 
-    print("Received audio file: ", len(audio))
+        audio = await file.read()
 
-    client = openai.AsyncOpenAI(
-        api_key=TRANSCRIPTION_API_KEY, base_url=TRANSCRIPTION_API_HOST
-    )
+        print("Received audio file: ", len(audio))
 
-    transcription = await client.audio.transcriptions.create(
-        model=TRANSCRIPTION_API_MODEL,
-        file=audio,
-        response_format="text",
-    )
+        client = openai.AsyncOpenAI(
+            api_key=TRANSCRIPTION_API_KEY, base_url=TRANSCRIPTION_API_HOST
+        )
 
-    print("Transcription ready: ", len(transcription))
+        transcription = await client.audio.transcriptions.create(
+            model=TRANSCRIPTION_API_MODEL,
+            file=audio,
+            response_format="text",
+        )
 
-    note = await process_note(transcription)
+        print("Transcription ready: ", len(transcription))
 
-    print("Processing ready: ", len(note))
+        data = await process_note(transcription)
 
-    with Session(engine) as session:
-        note = Note(user=email, content=note["content"], title=note["title"])
+        print("Processing ready: ", len(data['content']))
+
+        note = Note(user=email, content=data["content"], title=data["title"])
         session.add(note)
+
+        user.credits -= data['cost']
+        session.add(user)
+
         session.commit()
         session.refresh(note)
 
