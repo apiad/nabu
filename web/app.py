@@ -13,6 +13,22 @@ def post(path, **kwargs):
         return response.json()
 
 
+def get(path, **kwargs):
+    api_url = st.secrets.get("api_url")
+
+    with httpx.Client(base_url=api_url, timeout=30) as client:
+        response = client.get(path, params=kwargs)
+        return response.json()
+
+
+def delete(path, **kwargs):
+    api_url = st.secrets.get("api_url")
+
+    with httpx.Client(base_url=api_url, timeout=30) as client:
+        response = client.delete(path, params=kwargs)
+        return response.json()
+
+
 def transcribe(file, **kwargs):
     api_url = st.secrets.get("api_url")
 
@@ -68,13 +84,24 @@ if status != "logged":
 username = st.session_state.get("username")
 token = st.session_state.get("token")
 
-audio = st.audio_input("Record audio")
+upload = st.toggle("Upload audio")
 
-if not audio:
-    st.info("Record an audio to create a new note.")
-    st.stop()
+if upload:
+    audio = st.file_uploader("Upload audio file", ["wav", "mp3", "aac", "ogg", "m4a"])
+else:
+    audio = st.audio_input("Record audio")
 
-if st.button("Create note", icon="📝"):
+if audio and st.button("Create note", icon="📝"):
     with st.spinner("Transcribing..."):
         transcription = transcribe(email=username, token=token, file=audio.read())
-        st.success(transcription)
+        st.success("Note created successfully")
+
+notes = get("/notes", email=username, token=token)
+
+for note in notes:
+    with st.expander(note['content'].split("\n")[0][:30]):
+        st.write(note['content'])
+
+        if st.button("Delete", key=note['id'], icon="🗑️"):
+            delete("/note/" + note['id'], email=username, token=token)
+            st.rerun()

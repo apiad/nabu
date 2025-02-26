@@ -8,5 +8,5 @@ contain repeated words or incorrect words.
 The corrected text should be split into meaningful paragraphs,
 in the same language and style as the transcription,
 and as close to the original transcription as possible.
-Reply only with the corrected text.
+Reply only with the corrected text, do not add any additional comments.
 """

@@ -4,9 +4,9 @@ import openai
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, UploadFile
 from pydantic import EmailStr
-from models import User
+from models import Note, User
 import prompts
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import SQLModel, Session, create_engine, select
 from aiosmtplib import SMTP
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -120,7 +120,7 @@ async def process_note(transcription: str):
 
 
 @app.post("/transcribe")
-async def transcribe(email: EmailStr, token: str, file: UploadFile):
+async def transcribe(email: EmailStr, token: str, file: UploadFile) -> Note:
     with Session(engine) as session:
         user: User = session.get(User, email)
 
@@ -132,6 +132,8 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile):
 
     audio = await file.read()
 
+    print("Received audio file: ", len(audio))
+
     client = openai.AsyncOpenAI(
         api_key=TRANSCRIPTION_API_KEY, base_url=TRANSCRIPTION_API_HOST
     )
@@ -142,6 +144,47 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile):
         response_format="text",
     )
 
+    print("Transcription ready: ", len(transcription))
+
     note = await process_note(transcription)
 
-    return {"transcription": transcription, "note": note}
+    print("Processing ready: ", len(note))
+
+    with Session(engine) as session:
+        note = Note(user=email, content=note)
+        session.add(note)
+        session.commit()
+        session.refresh(note)
+
+        return note
+
+
+@app.get("/notes")
+async def get_notes(email: EmailStr, token: str) -> list[Note]:
+    with Session(engine) as session:
+        user: User = session.get(User, email)
+
+        if user is None or user.token != token:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        notes = session.exec(select(Note).where(Note.user == email)).all()
+
+    return notes
+
+
+@app.delete("/note/{id}")
+async def delete_note(email: EmailStr, token: str, id: str):
+    with Session(engine) as session:
+        user: User = session.get(User, email)
+        if user is None or user.token != token:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        note: Note = session.get(Note, id)
+
+        if note is None or note.user != email:
+            raise HTTPException(status_code=404, detail="Note not found")
+
+        session.delete(note)
+        session.commit()
+
+    return {"detail": "Note deleted"}
