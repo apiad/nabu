@@ -1,9 +1,8 @@
 import streamlit as st
-import st_copy_to_clipboard
 import httpx
 
 
-st.set_page_config("Nabu Audio Notes", page_icon="🔊")
+st.set_page_config("Nabu Audio Notes", page_icon="🪄")
 
 
 def post(path, **kwargs):
@@ -64,7 +63,6 @@ def _verify(otp):
 
 
 def verify():
-    email = st.session_state.username
     otp = st.text_input("OTP")
 
     if otp:

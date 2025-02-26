@@ -224,6 +224,7 @@ CREDIT_PRODUCTS = {
     "250 Credits": "lPqbI6kRPJtqrGRYPqpYIA==",
     "500 Credits": "gtonvp-BcpF-TZ1VFYCT2g==",
     "1000 Credits": "Wb9M4K5An8aGb9yJ1aMThA==",
+    "10000 Credits": "xbIVi2Qv5oNap6wp9oWdgg==",
 }
 
 CREDIT_VALUES = {
@@ -231,6 +232,7 @@ CREDIT_VALUES = {
     "250 Credits": 250,
     "500 Credits": 500,
     "1000 Credits": 1000,
+    "10000 Credits": 10000,
 }
 
 
