@@ -141,13 +141,13 @@ with st.sidebar:
 
     st.link_button(
         f"Buy a {pack} Pack",
-        f"https://apiad.gumroad.com/l/nabu-{pack.split()[0]}",
+        f"https://apiad.gumroad.com/l/nabu-{pack.split()[0]}?wanted=true",
         icon="💸",
     )
 
     st.write(f"#### Enter your {pack} Pack info")
 
-    key = st.text_input("Key", type="password")
+    key = st.text_input("License Key")
 
     if st.button(f"Add {pack}", icon="💸"):
         add_credits = post(
