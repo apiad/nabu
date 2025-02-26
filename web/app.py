@@ -134,7 +134,7 @@ with st.sidebar:
     st.write("### Add credits")
 
     pack = st.selectbox(
-        "Pack", ["100 Credits", "250 Credits", "500 Credits", "1000 Credits"], index=0
+        "Pack", ["100 Credits", "250 Credits", "500 Credits", "1000 Credits", "10000 Credits"], index=0
     )
 
     st.link_button(
