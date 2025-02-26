@@ -17,3 +17,4 @@ class Note(SQLModel, table=True):
     user: str = Field(foreign_key="user.email")
     updated: datetime = Field(default_factory=datetime.now)
     content: str
+    title: str

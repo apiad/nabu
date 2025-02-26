@@ -8,5 +8,11 @@ contain repeated words or incorrect words.
 The corrected text should be split into meaningful paragraphs,
 in the same language and style as the transcription,
 and as close to the original transcription as possible.
-Reply only with the corrected text, do not add any additional comments.
+Additionally, provide a suitable, short title for the note.
+Reply only with a JSON file with the following structure:
+
+{{
+    "content": "the corrected text",
+    "title": "the suggested title"
+}}
 """

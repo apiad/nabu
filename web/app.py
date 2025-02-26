@@ -41,27 +41,35 @@ def transcribe(file, **kwargs):
         return response.json()
 
 
+def _login(email):
+    post("/login", email=email)
+    st.session_state.username = email
+    st.session_state.status = "otp"
+
+
 def login():
     email = st.text_input("Email")
 
-    if st.button("Login", icon="🔑"):
-        msg = post("/login", email=email)
-        st.session_state.username = email
-        st.session_state.status = "otp"
-    else:
-        st.stop()
+    if email:
+        st.button("Login", icon="🔑", on_click=_login, args=(email,))
+
+    st.stop()
+
+
+def _verify(otp):
+    msg = post("/verify", email=st.session_state.username, otp=otp)
+    st.session_state.token = msg.get("token")
+    st.session_state.status = "logged"
 
 
 def verify():
     email = st.session_state.username
     otp = st.text_input("OTP")
 
-    if st.button("Verify", icon="🔑"):
-        msg = post("/verify", email=email, otp=otp)
-        st.session_state.token = msg.get("token")
-        st.session_state.status = "logged"
-    else:
-        st.stop()
+    if otp:
+        st.button("Verify", icon="🔑", on_click=_verify, args=(otp,))
+
+    st.stop()
 
 
 status = st.session_state.get("status", "unknown")
@@ -69,13 +77,9 @@ status = st.session_state.get("status", "unknown")
 
 if status == "unknown":
     login()
-    st.rerun()
-
 
 if status == "otp":
     verify()
-    st.rerun()
-
 
 if status != "logged":
     raise ValueError(status)
@@ -99,7 +103,7 @@ if audio and st.button("Create note", icon="📝"):
 notes = get("/notes", email=username, token=token)
 
 for note in notes:
-    with st.expander(note['content'].split("\n")[0][:30]):
+    with st.expander(note['title']):
         st.write(note['content'])
 
         if st.button("Delete", key=note['id'], icon="🗑️"):

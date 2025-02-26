@@ -29,6 +29,8 @@ LLM_API_HOST = os.getenv("LLM_API_HOST")
 LLM_API_MODEL = os.getenv("LLM_API_MODEL")
 LLM_API_KEY = os.getenv("LLM_API_KEY")
 
+SKIP_EMAIL = bool(os.getenv("SKIP_EMAIL"))
+
 DATABASE_URL = "sqlite:///./database.db"
 
 engine = create_engine(DATABASE_URL)
@@ -63,6 +65,10 @@ async def login(email: EmailStr):
 
 
 async def send_email(receiver_email, otp):
+    if SKIP_EMAIL:
+        print(receiver_email, otp)
+        return
+
     """Send OTP via email using Migadu SMTP asynchronously."""
     msg = MIMEMultipart()
     msg["From"] = SENDER_EMAIL
@@ -114,9 +120,10 @@ async def process_note(transcription: str):
     response = await client.chat.completions.create(
         model=LLM_API_MODEL,
         messages=messages,
+        response_format={"type": "json_object"},
     )
 
-    return response.choices[0].message.content
+    return json.loads(response.choices[0].message.content)
 
 
 @app.post("/transcribe")
@@ -151,7 +158,7 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile) -> Note:
     print("Processing ready: ", len(note))
 
     with Session(engine) as session:
-        note = Note(user=email, content=note)
+        note = Note(user=email, content=note['content'], title=note['title'])
         session.add(note)
         session.commit()
         session.refresh(note)
