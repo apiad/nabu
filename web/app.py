@@ -65,6 +65,8 @@ def _verify(otp):
 def verify():
     otp = st.text_input("OTP")
 
+    st.info(f"An OTP code was sent to **{st.session_state.username}**. Check your email and paste the code here. Double check in your SPAM folder if you can't find it.")
+
     if otp:
         st.button("Verify", icon="🔑", on_click=_verify, args=(otp,))
 
