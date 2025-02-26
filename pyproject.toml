@@ -10,6 +10,7 @@ dependencies = [
     "fastapi[standard]>=0.115.8",
     "openai>=1.64.0",
     "sqlmodel>=0.0.22",
+    "st-copy-to-clipboard>=0.1.6",
     "streamlit>=1.42.2",
     "uvicorn[standard]>=0.34.0",
 ]

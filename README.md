@@ -36,6 +36,6 @@ In for-profit organizations or for any form of commercial use, you must install 
 
 The official version of [Nabu Voice Notes](https://nabu.apiad.net) is a web service that operates on a pay-per-use model. Users purchase credits that last indefinitely; there are no subscriptions or recurring costs involved. Credits are spent solely for AI-based processing (transcription, summarization, etc.). There is no additional cost for cloud storage. Your notes are forever safe.
 
-Credit packages are bundled in different sizes, with larger bundles offering significant discounts. Please note that credits are prepaid and non-refundable. During the beta phase, all new users will begin with 100 free credits to explore the app's features.
+Credit packages are bundled in different sizes, with larger bundles offering significant discounts. Please note that credits are prepaid and non-refundable. During the beta phase, all new users will begin with 10 free credits to explore the app's features.
 
 For reference, a typical note of about 500-1000 words, with a basic post-processing such as extracting key insights into bulletpoints, should cost 1 credit.

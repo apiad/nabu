@@ -1,4 +1,5 @@
 import streamlit as st
+import st_copy_to_clipboard
 import httpx
 
 
@@ -88,24 +89,74 @@ if status != "logged":
 username = st.session_state.get("username")
 token = st.session_state.get("token")
 
-upload = st.toggle("Upload audio")
+new_tab, notes_tab = st.tabs(["🎤 New note", "🗒️ My notes"])
 
-if upload:
-    audio = st.file_uploader("Upload audio file", ["wav", "mp3", "aac", "ogg", "m4a"])
-else:
-    audio = st.audio_input("Record audio")
+with new_tab:
+    upload = st.toggle("Upload existing audio")
 
-if audio and st.button("Create note", icon="📝"):
-    with st.spinner("Transcribing..."):
-        transcription = transcribe(email=username, token=token, file=audio.read())
-        st.success("Note created successfully")
+    if upload:
+        audio = st.file_uploader(
+            "Upload audio file", ["wav", "mp3", "aac", "ogg", "m4a"]
+        )
+    else:
+        audio = st.audio_input("Record new audio note")
 
-notes = get("/notes", email=username, token=token)
+    if audio and st.button("Create note", icon="📝"):
+        with st.spinner("Transcribing..."):
+            transcription = transcribe(email=username, token=token, file=audio.read())
+            st.toast("Note created successfully")
 
-for note in notes:
-    with st.expander(note['title']):
-        st.write(note['content'])
+with notes_tab:
+    notes = get("/notes", email=username, token=token)
 
-        if st.button("Delete", key=note['id'], icon="🗑️"):
-            delete("/note/" + note['id'], email=username, token=token)
-            st.rerun()
+    for note in notes:
+        with st.expander(note["title"]):
+            if st.toggle("Raw mode", key=note["id"] + "_raw"):
+                st.code(note["content"], wrap_lines=True)
+            else:
+                st.write(note["content"])
+
+            if st.button("Delete", key=note["id"] + "_delete", icon="🗑️"):
+                delete("/note/" + note["id"], email=username, token=token)
+                st.rerun()
+
+
+def logout():
+    st.session_state.pop("status")
+    st.session_state.pop("username")
+    st.session_state.pop("token")
+
+
+with st.sidebar:
+    st.button("Logout", icon="🚪", on_click=logout, use_container_width=True)
+
+    credits = get("/credits", email=username, token=token)
+    st.write(f"## **Credits**: {credits['remaining']}")
+
+    st.link_button(
+        "Get more credits",
+        "https://apiad.gumroad.com/l/nabu-100",
+        icon="💸",
+    )
+
+    st.write("### Add a credit pack")
+
+    pack = st.selectbox(
+        "Pack", ["100 Credits", "250 Credits", "500 Credits", "1000 Credits"], index=0
+    )
+    key = st.text_input("Key", type="password")
+
+    if st.button("Add", icon="💸"):
+        add_credits = post(
+            "/credits",
+            email=username,
+            token=token,
+            pack=pack,
+            key=key,
+        )
+
+        try:
+            if add_credits['status'] == "accepted":
+                st.success("Credits added successfully!")
+        except:
+            st.error(add_credits['detail'])

@@ -1,10 +1,11 @@
 import json
+import httpx
 import random
 import openai
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, UploadFile
 from pydantic import EmailStr
-from models import Note, User
+from models import Note, Pack, User
 import prompts
 from sqlmodel import SQLModel, Session, create_engine, select
 from aiosmtplib import SMTP
@@ -158,7 +159,7 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile) -> Note:
     print("Processing ready: ", len(note))
 
     with Session(engine) as session:
-        note = Note(user=email, content=note['content'], title=note['title'])
+        note = Note(user=email, content=note["content"], title=note["title"])
         session.add(note)
         session.commit()
         session.refresh(note)
@@ -195,3 +196,65 @@ async def delete_note(email: EmailStr, token: str, id: str):
         session.commit()
 
     return {"detail": "Note deleted"}
+
+
+@app.get("/credits")
+def get_credits(email: EmailStr, token: str):
+    with Session(engine) as session:
+        user: User = session.get(User, email)
+
+        if user is None or user.token != token:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        return {"remaining": user.credits}
+
+
+CREDIT_PRODUCTS = {
+    "100 Credits": "RBGp66ccm3dTedX9mv9T9A==",
+    "250 Credits": "lPqbI6kRPJtqrGRYPqpYIA==",
+    "500 Credits": "gtonvp-BcpF-TZ1VFYCT2g==",
+    "1000 Credits": "Wb9M4K5An8aGb9yJ1aMThA==",
+}
+
+CREDIT_VALUES = {
+    "100 Credits": 100,
+    "250 Credits": 250,
+    "500 Credits": 500,
+    "1000 Credits": 1000,
+}
+
+
+@app.post("/credits")
+def add_credits(email: EmailStr, token: str, pack: str, key: str):
+    with Session(engine) as session:
+        user: User = session.get(User, email)
+
+        if user is None or user.token != token:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        if session.get(Pack, key):
+            raise HTTPException(status_code=400, detail="Key already used")
+
+        url = "https://api.gumroad.com/v2/licenses/verify"
+        params = dict(
+            product_id=CREDIT_PRODUCTS[pack],
+            license_key=key,
+            increment_uses_count=False,
+        )
+
+        client = httpx.Client()
+        response = client.post(url, params=params)
+
+        if response.json()["success"]:
+            session.add(Pack(id=key, amount=CREDIT_VALUES[pack], user=email))
+
+            user.credits += CREDIT_VALUES[pack]
+            session.add(user)
+
+            session.commit()
+            session.refresh(user)
+
+            return {"remaining": user.credits, "status": "accepted"}
+
+        else:
+            raise HTTPException(status_code=400, detail="Invalid key")
