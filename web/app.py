@@ -5,11 +5,11 @@ import httpx
 st.set_page_config("Nabu - Voice Notes", page_icon="🪄")
 
 
-def post(path, **kwargs):
+def post(path, json=None, **kwargs):
     api_url = st.secrets.get("api_url")
 
     with httpx.Client(base_url=api_url, timeout=30) as client:
-        response = client.post(path, params=kwargs)
+        response = client.post(path, params=kwargs, json=json)
         return response.json()
 
 
@@ -29,12 +29,12 @@ def delete(path, **kwargs):
         return response.json()
 
 
-def transcribe(file, **kwargs):
+def process(file, **kwargs):
     api_url = st.secrets.get("api_url")
 
     with httpx.Client(base_url=api_url, timeout=300) as client:
         response = client.post(
-            "/transcribe",
+            "/process",
             params=kwargs,
             files=dict(file=("note.wav", file, "audio/wav")),
         )
@@ -92,7 +92,33 @@ username = st.session_state.get("username")
 token = st.session_state.get("token")
 notes = get("/notes", email=username, token=token)
 
-new_tab, notes_tab = st.tabs(["🎤 New note", f"🗒️ My notes **`{len(notes)}`**"])
+new_tab, notes_tab, config_tab = st.tabs(
+    ["🎤 New note", f"🗒️ My notes **`{len(notes)}`**", "⚙️ Config"]
+)
+
+config = get("/config", email=username, token=token)
+
+with config_tab:
+    with st.expander("Token"):
+        st.code(token, language="text")
+
+    st.write("#### Styles")
+    st.write("These are possible styles for the note transcription.")
+
+    config["styles"] = st.data_editor(
+        config["styles"], num_rows="dynamic", use_container_width=True
+    )
+
+    st.write("#### Processes")
+    st.write("These are post-processing tasks to apply after the note has been transcribed.")
+
+    config["process"] = st.data_editor(
+        config["processes"], num_rows="dynamic", use_container_width=True
+    )
+
+    if st.button('Save config', icon="💾"):
+        post("/config", email=username, token=token, json=config)
+        st.toast("Config updated in the server.")
 
 selected_notes = []
 
@@ -129,17 +155,46 @@ with new_tab:
     else:
         audio = st.audio_input("Record new audio note")
 
-    mode = st.pills("Mode", ["Transcription", "Instruction"], default="Transcription", help="Use **Transcription** to get a cleaned up transcription of the audio, or **Instruction** to get a response to a specific prompt.")
-    style = st.pills("Style", ["Plain", "Formal", "Verbose", "Bullets"], default="Plain", help="Select one style for the generated note. Define styles in the **Config** tab.")
-    processing = st.pills("Processing", ["Summary", "Actions", "Follow-up"], selection_mode="multi", help="Apply one or more post-processing to the note. Define them in the **Config** tab.")
+    with st.expander("Configure note processing options"):
+        mode = st.pills(
+            "Mode",
+            ["Transcription", "Instruction"],
+            default="Transcription",
+            help="Use **Transcription** to get a cleaned up transcription of the audio, or **Instruction** to get a response to a specific prompt.",
+        )
+        style = st.pills(
+            "Style",
+            [s["name"] for s in config["styles"]],
+            default="Plain",
+            help="Select one style for the generated note. Define styles in the **Config** tab.",
+        )
+        processing = st.pills(
+            "Processing",
+            [p["name"] for p in config["processes"]],
+            selection_mode="multi",
+            help="Apply one or more post-processing to the note. Define them in the **Config** tab.",
+        )
 
-    if selected_notes:
-        st.info(f"Using {len(selected_notes)} additional notes for context.")
+        if selected_notes:
+            st.info(f"Using {len(selected_notes)} additional notes for context.")
 
     if audio and st.button("Create note", icon="📝"):
         with st.spinner("Transcribing..."):
-            transcription = transcribe(email=username, token=token, file=audio.read())
-            st.toast("Note created successfully")
+            transcription = process(
+                email=username,
+                token=token,
+                style=style,
+                mode=mode.lower(),
+                processes=",".join(processing),
+                file=audio.read(),
+            )
+
+            st.success("The note has been created. You can review it below, or recreate (a new note) in a different style or with additional processing.")
+
+            with st.container(border=True):
+                st.write("### " + transcription['title'])
+                st.write(transcription['content'])
+                st.toast("Note created successfully")
 
 
 def logout():

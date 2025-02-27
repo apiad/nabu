@@ -6,7 +6,7 @@ import openai
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, UploadFile
 from pydantic import EmailStr
-from models import Note, Pack, User
+from models import Config, Note, Pack, Process, Style, User
 import prompts
 from sqlmodel import SQLModel, Session, create_engine, select
 from aiosmtplib import SMTP
@@ -22,6 +22,8 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = os.getenv("EMAIL_PORT")
+
+ADMIN = os.getenv("ADMIN")
 
 TRANSCRIPTION_API_HOST = os.getenv("TRANSCRIPTION_API_HOST")
 TRANSCRIPTION_API_MODEL = os.getenv("TRANSCRIPTION_API_MODEL")
@@ -111,7 +113,36 @@ async def verify_otp(email: EmailStr, otp: str):
         return {"message": "User verified.", "token": user.token}
 
 
-async def process_note(transcription: str, mode:str):
+@app.get("/config")
+async def get_config(email: EmailStr, token: str) -> Config:
+    with Session(engine) as session:
+        user: User = session.get(User, email)
+
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        if user.token != token:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        return user.get_config(session)
+
+
+@app.post("/config")
+async def set_config(email: EmailStr, token: str, config: Config):
+    with Session(engine) as session:
+        user: User = session.get(User, email)
+
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        if user.token != token:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        user.set_config(session, config)
+        return {"message": "Config updated."}
+
+
+async def process_note(
+    transcription: str, mode: str, style: Style, processes: list[Process]
+):
     client = openai.AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_API_HOST)
 
     if mode == "transcription":
@@ -120,7 +151,7 @@ async def process_note(transcription: str, mode:str):
         prompt = prompts.INSTRUCTION_PROMPT
 
     messages = [
-        dict(role="system", content=prompt),
+        dict(role="system", content=prompt.format(style=style.description)),
         dict(role="user", content=transcription),
     ]
 
@@ -131,13 +162,30 @@ async def process_note(transcription: str, mode:str):
     )
 
     data = json.loads(response.choices[0].message.content)
-    data['cost'] = math.ceil(response.usage.total_tokens / 1000)
+    usage = response.usage.total_tokens
+
+    for process in processes:
+        messages = [
+            dict(role="system", content=prompts.PROCESS_PROMPT.format(process=process.prompt)),
+            dict(role="user", content=transcription),
+        ]
+
+        response = await client.chat.completions.create(
+            model=LLM_API_MODEL,
+            messages=messages
+        )
+
+        d = response.choices[0].message.content
+        data['content'] += f"\n\n**{process.name}**\n\n{d}"
+        usage += response.usage.total_tokens
+
+    data["cost"] = math.ceil(usage / 1000)
 
     return data
 
 
-@app.post("/transcribe")
-async def transcribe(email: EmailStr, token: str, file: UploadFile, mode:str) -> Note:
+@app.post("/process")
+async def process(email: EmailStr, token: str, file: UploadFile, mode: str, style:str, processes:str) -> Note:
     with Session(engine) as session:
         user: User = session.get(User, email)
 
@@ -149,6 +197,21 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile, mode:str) ->
 
         if user.credits <= 0:
             raise HTTPException(status_code=402, detail="Insufficient credits")
+
+        if mode not in ["transcription", "instruction"]:
+            raise HTTPException(status_code=400, detail="Invalid mode")
+
+        config = user.get_config(session)
+
+        possible_styles = [s for s in config.styles if s.name == style]
+
+        if not possible_styles:
+            raise HTTPException(status_code=400, detail="Invalid style")
+
+        processes = set(processes.split(","))
+
+        user_style = possible_styles[0]
+        user_processes = [p for p in config.processes if p.name in processes]
 
         audio = await file.read()
 
@@ -166,14 +229,14 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile, mode:str) ->
 
         print("Transcription ready: ", len(transcription))
 
-        data = await process_note(transcription, mode)
+        data = await process_note(transcription, mode, user_style, user_processes)
 
-        print("Processing ready: ", len(data['content']))
+        print("Processing ready: ", len(data["content"]))
 
         note = Note(user=email, content=data["content"], title=data["title"])
         session.add(note)
 
-        user.credits -= data['cost']
+        user.credits -= data["cost"]
         session.add(user)
 
         session.commit()
@@ -275,3 +338,18 @@ def add_credits(email: EmailStr, token: str, pack: str, key: str):
 
         else:
             raise HTTPException(status_code=400, detail="Invalid key")
+
+
+@app.get("/users")
+async def get_users(email: EmailStr, token: str):
+    with Session(engine) as session:
+        user: User = session.get(User, email)
+
+        if user is None or user.token != token:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        if user.email != ADMIN:
+            raise HTTPException(status_code=401, detail="Need to be admin")
+
+        users = session.exec(select(User)).all()
+        return users
