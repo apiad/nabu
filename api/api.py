@@ -111,11 +111,16 @@ async def verify_otp(email: EmailStr, otp: str):
         return {"message": "User verified.", "token": user.token}
 
 
-async def process_note(transcription: str):
+async def process_note(transcription: str, mode:str):
     client = openai.AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_API_HOST)
 
+    if mode == "transcription":
+        prompt = prompts.TRANSCRIPTION_PROMPT
+    else:
+        prompt = prompts.INSTRUCTION_PROMPT
+
     messages = [
-        dict(role="system", content=prompts.PROOFREADING_PROMPT),
+        dict(role="system", content=prompt),
         dict(role="user", content=transcription),
     ]
 
@@ -132,7 +137,7 @@ async def process_note(transcription: str):
 
 
 @app.post("/transcribe")
-async def transcribe(email: EmailStr, token: str, file: UploadFile) -> Note:
+async def transcribe(email: EmailStr, token: str, file: UploadFile, mode:str) -> Note:
     with Session(engine) as session:
         user: User = session.get(User, email)
 
@@ -161,7 +166,7 @@ async def transcribe(email: EmailStr, token: str, file: UploadFile) -> Note:
 
         print("Transcription ready: ", len(transcription))
 
-        data = await process_note(transcription)
+        data = await process_note(transcription, mode)
 
         print("Processing ready: ", len(data['content']))
 

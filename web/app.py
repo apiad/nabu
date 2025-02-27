@@ -2,7 +2,7 @@ import streamlit as st
 import httpx
 
 
-st.set_page_config("Nabu Audio Notes", page_icon="🪄")
+st.set_page_config("Nabu - Voice Notes", page_icon="🪄")
 
 
 def post(path, **kwargs):
@@ -65,7 +65,9 @@ def _verify(otp):
 def verify():
     otp = st.text_input("OTP")
 
-    st.info(f"An OTP code was sent to **{st.session_state.username}**. Check your email and paste the code here. Double check in your SPAM folder if you can't find it.")
+    st.info(
+        f"An OTP code was sent to **{st.session_state.username}**. Check your email and paste the code here. Double check in your SPAM folder if you can't find it."
+    )
 
     if otp:
         st.button("Verify", icon="🔑", on_click=_verify, args=(otp,))
@@ -88,8 +90,34 @@ if status != "logged":
 
 username = st.session_state.get("username")
 token = st.session_state.get("token")
+notes = get("/notes", email=username, token=token)
 
-new_tab, notes_tab = st.tabs(["🎤 New note", "🗒️ My notes"])
+new_tab, notes_tab = st.tabs(["🎤 New note", f"🗒️ My notes **`{len(notes)}`**"])
+
+selected_notes = []
+
+with notes_tab:
+    for note in notes:
+        with st.expander(note["title"]):
+            options = st.pills(
+                None,
+                key=note["id"] + "_options",
+                label_visibility="collapsed",
+                options=["Raw", "Select"],
+                selection_mode="multi",
+            )
+
+            if "Raw" in options:
+                st.code(note["content"], wrap_lines=True, language="markdown")
+            else:
+                st.write(note["content"])
+
+            if "Select" in options:
+                selected_notes.append(note)
+
+            if st.button("Delete", key=note["id"] + "_delete", icon="🗑️"):
+                delete("/note/" + note["id"], email=username, token=token)
+                st.rerun()
 
 with new_tab:
     upload = st.toggle("Upload existing audio")
@@ -101,24 +129,17 @@ with new_tab:
     else:
         audio = st.audio_input("Record new audio note")
 
+    mode = st.pills("Mode", ["Transcription", "Instruction"], default="Transcription", help="Use **Transcription** to get a cleaned up transcription of the audio, or **Instruction** to get a response to a specific prompt.")
+    style = st.pills("Style", ["Plain", "Formal", "Verbose", "Bullets"], default="Plain", help="Select one style for the generated note. Define styles in the **Config** tab.")
+    processing = st.pills("Processing", ["Summary", "Actions", "Follow-up"], selection_mode="multi", help="Apply one or more post-processing to the note. Define them in the **Config** tab.")
+
+    if selected_notes:
+        st.info(f"Using {len(selected_notes)} additional notes for context.")
+
     if audio and st.button("Create note", icon="📝"):
         with st.spinner("Transcribing..."):
             transcription = transcribe(email=username, token=token, file=audio.read())
             st.toast("Note created successfully")
-
-with notes_tab:
-    notes = get("/notes", email=username, token=token)
-
-    for note in notes:
-        with st.expander(note["title"]):
-            if st.toggle("Raw mode", key=note["id"] + "_raw"):
-                st.code(note["content"], wrap_lines=True, language="markdown")
-            else:
-                st.write(note["content"])
-
-            if st.button("Delete", key=note["id"] + "_delete", icon="🗑️"):
-                delete("/note/" + note["id"], email=username, token=token)
-                st.rerun()
 
 
 def logout():
@@ -136,7 +157,9 @@ with st.sidebar:
     st.write("### Add credits")
 
     pack = st.selectbox(
-        "Pack", ["100 Credits", "250 Credits", "500 Credits", "1000 Credits", "10000 Credits"], index=0
+        "Pack",
+        ["100 Credits", "250 Credits", "500 Credits", "1000 Credits", "10000 Credits"],
+        index=0,
     )
 
     st.link_button(
@@ -159,7 +182,7 @@ with st.sidebar:
         )
 
         try:
-            if add_credits['status'] == "accepted":
+            if add_credits["status"] == "accepted":
                 st.success("Credits added successfully!")
         except:
-            st.error(add_credits['detail'])
+            st.error(add_credits["detail"])
