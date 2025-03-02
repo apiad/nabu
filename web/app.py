@@ -1,8 +1,12 @@
 import streamlit as st
+import time
 import httpx
 
 
 st.set_page_config("Nabu - Voice Notes", page_icon="🪄")
+
+
+from streamlit_cookies_manager import CookieManager
 
 
 def post(path, json=None, **kwargs):
@@ -75,6 +79,22 @@ def verify():
     st.stop()
 
 
+st.title("🪄 Nabu - Voice Notes")
+
+
+cookies = CookieManager()
+
+
+while not cookies.ready():
+    time.sleep(1)
+
+
+if cookies.get("token"):
+    st.session_state.token = cookies.get("token")
+    st.session_state.username = cookies.get("username")
+    st.session_state.status = "logged"
+
+
 status = st.session_state.get("status", "unknown")
 
 
@@ -90,6 +110,10 @@ if status != "logged":
 
 username = st.session_state.get("username")
 token = st.session_state.get("token")
+
+cookies.update(username=username, token=token, status="logged")
+cookies.save()
+
 notes = get("/notes", email=username, token=token)
 
 new_tab, notes_tab, config_tab = st.tabs(
@@ -99,24 +123,32 @@ new_tab, notes_tab, config_tab = st.tabs(
 config = get("/config", email=username, token=token)
 
 with config_tab:
-    with st.expander("Token"):
+    with st.expander("Token (for debug purposes only, do not share!)"):
         st.code(token, language="text")
 
-    st.write("#### Styles")
-    st.write("These are possible styles for the note transcription.")
+    with st.expander("Styles"):
+        st.write("These are possible styles for the note transcription.")
 
-    config["styles"] = st.data_editor(
-        config["styles"], num_rows="dynamic", use_container_width=True
-    )
+        config["styles"] = st.data_editor(
+            config["styles"], num_rows="dynamic", use_container_width=True, column_config={
+                "name": st.column_config.TextColumn("Name"),
+                "description": st.column_config.TextColumn("Description", width="large", ),
+            }
+        )
 
-    st.write("#### Processes")
-    st.write("These are post-processing tasks to apply after the note has been transcribed.")
+    with st.expander("Processes"):
+        st.write(
+            "These are post-processing tasks to apply after the note has been transcribed."
+        )
 
-    config["process"] = st.data_editor(
-        config["processes"], num_rows="dynamic", use_container_width=True
-    )
+        config["process"] = st.data_editor(
+            config["processes"], num_rows="dynamic", use_container_width=True, column_config={
+                "name": st.column_config.TextColumn("Name"),
+                "prompt": st.column_config.TextColumn("Prompt", width="large"),
+            }
+        )
 
-    if st.button('Save config', icon="💾"):
+    if st.button("Save config", icon="💾"):
         post("/config", email=username, token=token, json=config)
         st.toast("Config updated in the server.")
 
@@ -189,11 +221,13 @@ with new_tab:
                 file=audio.read(),
             )
 
-            st.success("The note has been created. You can review it below, or recreate (a new note) in a different style or with additional processing.")
+            st.success(
+                "The note has been created. You can review it below, or recreate (a new note) in a different style or with additional processing."
+            )
 
             with st.container(border=True):
-                st.write("### " + transcription['title'])
-                st.write(transcription['content'])
+                st.write("### " + transcription["title"])
+                st.write(transcription["content"])
                 st.toast("Note created successfully")
 
 
