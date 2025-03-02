@@ -79,9 +79,6 @@ def verify():
     st.stop()
 
 
-st.title("🪄 Nabu - Voice Notes")
-
-
 cookies = CookieManager()
 
 
