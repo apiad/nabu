@@ -245,23 +245,23 @@ with st.sidebar:
 
     st.write("### Add credits")
 
-    pack = st.selectbox(
+    st.write("Select a pack size to buy, then enter the license key you received after purchase.")
+
+    pack = st.pills(
         "Pack",
-        ["100 Credits", "250 Credits", "500 Credits", "1000 Credits", "10000 Credits"],
-        index=0,
+        ["100", "250", "500", "1K", "10K"],
+        default="100",
     )
 
     st.link_button(
-        f"Buy a {pack} Pack",
+        f"Buy a {pack} Credits Pack",
         f"https://apiad.gumroad.com/l/nabu-{pack.split()[0]}?wanted=true",
         icon="💸",
     )
 
-    st.write(f"#### Enter your {pack} Pack info")
+    key = st.text_input(f"Enter the {100}-Credits License Key")
 
-    key = st.text_input("License Key")
-
-    if st.button(f"Add {pack}", icon="💸"):
+    if key and st.button(f"Add {pack}", icon="💸"):
         add_credits = post(
             "/credits",
             email=username,
