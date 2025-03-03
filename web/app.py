@@ -138,7 +138,7 @@ with config_tab:
             "These are post-processing tasks to apply after the note has been transcribed."
         )
 
-        config["process"] = st.data_editor(
+        config["processes"] = st.data_editor(
             config["processes"], num_rows="dynamic", use_container_width=True, column_config={
                 "name": st.column_config.TextColumn("Name"),
                 "prompt": st.column_config.TextColumn("Prompt", width="large"),
@@ -146,6 +146,7 @@ with config_tab:
         )
 
     if st.button("Save config", icon="💾"):
+        st.write(config)
         post("/config", email=username, token=token, json=config)
         st.toast("Config updated in the server.")
 
@@ -185,12 +186,6 @@ with new_tab:
         audio = st.audio_input("Record new audio note")
 
     with st.expander("Configure note processing options"):
-        mode = st.pills(
-            "Mode",
-            ["Transcription", "Instruction"],
-            default="Transcription",
-            help="Use **Transcription** to get a cleaned up transcription of the audio, or **Instruction** to get a response to a specific prompt.",
-        )
         style = st.pills(
             "Style",
             [s["name"] for s in config["styles"]],
@@ -207,13 +202,12 @@ with new_tab:
         if selected_notes:
             st.info(f"Using {len(selected_notes)} additional notes for context.")
 
-    if audio and st.button("Create note", icon="📝"):
-        with st.spinner("Transcribing..."):
+    if audio and st.button("Create Note", icon="📝"):
+        with st.spinner("Processing..."):
             transcription = process(
                 email=username,
                 token=token,
                 style=style,
-                mode=mode.lower(),
                 processes=",".join(processing),
                 file=audio.read(),
             )

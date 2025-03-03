@@ -21,26 +21,6 @@ Reply only with a JSON file with the following structure:
 }}
 """
 
-INSTRUCTION_PROMPT = """
-You are a helpful assistant that answers user queries.
-The user message will contain a transcription from an audio message.
-The transcription may contain repeated or incorrect words, and incorrect grammar.
-
-Your task is to reply to the user as correctly as possible.
-
-Your response should be in the same language as the user query.
-
-Use the following style in your response: {style}
-
-Additionally, provide a suitable, short title for the conversation.
-
-Reply only with a JSON file with the following structure:
-
-{{
-    "answer": "the response",
-    "title": "the suggested title"
-}}
-"""
 
 PROCESS_PROMPT = """
 You are a helpful assistant that processes user notes.

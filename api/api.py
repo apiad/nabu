@@ -141,17 +141,12 @@ async def set_config(email: EmailStr, token: str, config: Config):
 
 
 async def process_note(
-    transcription: str, mode: str, style: Style, processes: list[Process]
+    transcription: str, style: Style, processes: list[Process]
 ):
     client = openai.AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_API_HOST)
 
-    if mode == "transcription":
-        prompt = prompts.TRANSCRIPTION_PROMPT
-    else:
-        prompt = prompts.INSTRUCTION_PROMPT
-
     messages = [
-        dict(role="system", content=prompt.format(style=style.description)),
+        dict(role="system", content=prompts.TRANSCRIPTION_PROMPT.format(style=style.description)),
         dict(role="user", content=transcription),
     ]
 
@@ -185,7 +180,7 @@ async def process_note(
 
 
 @app.post("/process")
-async def process(email: EmailStr, token: str, file: UploadFile, mode: str, style:str, processes:str) -> Note:
+async def process(email: EmailStr, token: str, file: UploadFile, style:str, processes:str) -> Note:
     with Session(engine) as session:
         user: User = session.get(User, email)
 
@@ -197,9 +192,6 @@ async def process(email: EmailStr, token: str, file: UploadFile, mode: str, styl
 
         if user.credits <= 0:
             raise HTTPException(status_code=402, detail="Insufficient credits")
-
-        if mode not in ["transcription", "instruction"]:
-            raise HTTPException(status_code=400, detail="Invalid mode")
 
         config = user.get_config(session)
 
@@ -229,7 +221,7 @@ async def process(email: EmailStr, token: str, file: UploadFile, mode: str, styl
 
         print("Transcription ready: ", len(transcription))
 
-        data = await process_note(transcription, mode, user_style, user_processes)
+        data = await process_note(transcription, user_style, user_processes)
 
         print("Processing ready: ", len(data["content"]))
 
@@ -288,19 +280,19 @@ def get_credits(email: EmailStr, token: str):
 
 
 CREDIT_PRODUCTS = {
-    "100 Credits": "RBGp66ccm3dTedX9mv9T9A==",
-    "250 Credits": "lPqbI6kRPJtqrGRYPqpYIA==",
-    "500 Credits": "gtonvp-BcpF-TZ1VFYCT2g==",
-    "1000 Credits": "Wb9M4K5An8aGb9yJ1aMThA==",
-    "10000 Credits": "xbIVi2Qv5oNap6wp9oWdgg==",
+    "100": "RBGp66ccm3dTedX9mv9T9A==",
+    "250": "lPqbI6kRPJtqrGRYPqpYIA==",
+    "500": "gtonvp-BcpF-TZ1VFYCT2g==",
+    "1K": "Wb9M4K5An8aGb9yJ1aMThA==",
+    "10K": "xbIVi2Qv5oNap6wp9oWdgg==",
 }
 
 CREDIT_VALUES = {
-    "100 Credits": 100,
-    "250 Credits": 250,
-    "500 Credits": 500,
-    "1000 Credits": 1000,
-    "10000 Credits": 10000,
+    "100": 100,
+    "250": 250,
+    "500": 500,
+    "1K": 1000,
+    "10K": 10000,
 }
 
 

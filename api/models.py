@@ -33,7 +33,8 @@ class Config(SQLModel):
                 Process(name="Summary", prompt="Summarize the text in a concise language."),
                 Process(name="Explanation", prompt="Explain the text in a detailed and clear language."),
                 Process(name="Actions", prompt="Extract all actionable items mentioned in the text, as a list of bullets."),
-                Process(name="Follow up", prompt="Suggest follow up actions or questions based on the text, as a list of bullets.")
+                Process(name="Follow up", prompt="Suggest follow up actions or questions based on the text, as a list of bullets."),
+                Process(name="Answer", prompt="Interpret the text as a question or instruction and provide a straightforward answer."),
             ]
         )
 
