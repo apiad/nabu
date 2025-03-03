@@ -12,24 +12,17 @@ The corrected text should be in the same language as the user query.
 Use the following style for the corrected text: {style}
 
 Additionally, provide a suitable, short title for the note.
-
-Reply only with a JSON file with the following structure:
-
-{{
-    "content": "the corrected text",
-    "title": "the suggested title"
-}}
 """
 
 
 PROCESS_PROMPT = """
 You are a helpful assistant that processes user notes.
-The user will provide a note, and you will process it, applying the following:
+The user will provide a note, and you will process it, applying the following instructions.
 
 {process}
 
 Respond solely with the result of processing the note.
 Do not include any additional text or explanations.
+The resulting text must be formatted in markdown.
 Do not include the original note in your response.
-Do not include any titles or headings.
 """

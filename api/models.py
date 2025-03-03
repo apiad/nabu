@@ -5,6 +5,17 @@ from sqlmodel import SQLModel, Field, Session
 from pydantic import EmailStr
 
 
+class Transcription(SQLModel):
+    transcription: str
+    title: str
+    cost: int = 0
+
+
+class ProcessedNote(SQLModel):
+    result: str
+    title: str
+
+
 class Style(SQLModel):
     name: str
     description: str
@@ -32,8 +43,8 @@ class Config(SQLModel):
             processes=[
                 Process(name="Summary", prompt="Summarize the text in a concise language."),
                 Process(name="Explanation", prompt="Explain the text in a detailed and clear language."),
-                Process(name="Actions", prompt="Extract all actionable items mentioned in the text, as a list of bullets."),
-                Process(name="Follow up", prompt="Suggest follow up actions or questions based on the text, as a list of bullets."),
+                Process(name="Actions", prompt="Extract all actionable items mentioned in the text, in bulletpoint format."),
+                Process(name="Follow up", prompt="Suggest follow up actions or questions based on the text, in bulletpoint format."),
                 Process(name="Answer", prompt="Interpret the text as a question or instruction and provide a straightforward answer."),
             ]
         )

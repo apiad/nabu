@@ -6,7 +6,16 @@ import openai
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, UploadFile
 from pydantic import EmailStr
-from models import Config, Note, Pack, Process, Style, User
+from models import (
+    Config,
+    Note,
+    Pack,
+    Process,
+    ProcessedNote,
+    Style,
+    User,
+    Transcription,
+)
 import prompts
 from sqlmodel import SQLModel, Session, create_engine, select
 from aiosmtplib import SMTP
@@ -14,6 +23,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import dotenv
 import os
+import instructor
 
 dotenv.load_dotenv()
 
@@ -140,47 +150,64 @@ async def set_config(email: EmailStr, token: str, config: Config):
         return {"message": "Config updated."}
 
 
-async def process_note(
-    transcription: str, style: Style, processes: list[Process]
-):
-    client = openai.AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_API_HOST)
+async def process_note(transcription: str, style: Style, processes: list[Process]):
+    client = instructor.from_openai(
+        openai.AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_API_HOST)
+    )
 
     messages = [
-        dict(role="system", content=prompts.TRANSCRIPTION_PROMPT.format(style=style.description)),
+        dict(
+            role="system",
+            content=prompts.TRANSCRIPTION_PROMPT.format(style=style.description),
+        ),
         dict(role="user", content=transcription),
     ]
 
-    response = await client.chat.completions.create(
+    note, completion = await client.chat.completions.create_with_completion(
         model=LLM_API_MODEL,
         messages=messages,
-        response_format={"type": "json_object"},
+        response_model=Transcription,
     )
 
-    data = json.loads(response.choices[0].message.content)
-    usage = response.usage.total_tokens
+    usage = completion.usage.total_tokens
+
+    result: list[ProcessedNote] = []
 
     for process in processes:
         messages = [
-            dict(role="system", content=prompts.PROCESS_PROMPT.format(process=process.prompt)),
-            dict(role="user", content=transcription),
+            dict(
+                role="system",
+                content=prompts.PROCESS_PROMPT.format(
+                    title=process.name, process=process.prompt
+                ),
+            ),
+            dict(role="user", content=note.transcription),
         ]
 
-        response = await client.chat.completions.create(
+        response, completion = await client.chat.completions.create_with_completion(
             model=LLM_API_MODEL,
-            messages=messages
+            messages=messages,
+            response_model=ProcessedNote,
         )
 
-        d = response.choices[0].message.content
-        data['content'] += f"\n\n**{process.name}**\n\n{d}"
-        usage += response.usage.total_tokens
+        response.title = process.name
+        result.append(response)
+        usage += completion.usage.total_tokens
 
-    data["cost"] = math.ceil(usage / 1000)
+    for processed_note in result:
+        note.transcription += (
+            f"\n\n**{processed_note.title}**\n\n{processed_note.result}"
+        )
 
-    return data
+    note.cost = math.ceil(usage / 1000)
+
+    return note
 
 
 @app.post("/process")
-async def process(email: EmailStr, token: str, file: UploadFile, style:str, processes:str) -> Note:
+async def process(
+    email: EmailStr, token: str, file: UploadFile, style: str, processes: str
+) -> Note:
     with Session(engine) as session:
         user: User = session.get(User, email)
 
@@ -223,12 +250,12 @@ async def process(email: EmailStr, token: str, file: UploadFile, style:str, proc
 
         data = await process_note(transcription, user_style, user_processes)
 
-        print("Processing ready: ", len(data["content"]))
+        print("Processing ready: ", len(data.transcription))
 
-        note = Note(user=email, content=data["content"], title=data["title"])
+        note = Note(user=email, content=data.transcription, title=data.title)
         session.add(note)
 
-        user.credits -= data["cost"]
+        user.credits -= data.cost
         session.add(user)
 
         session.commit()

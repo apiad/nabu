@@ -8,6 +8,7 @@ dependencies = [
     "aiosmtplib>=4.0.0",
     "dotenv>=0.9.9",
     "fastapi[standard]>=0.115.8",
+    "instructor>=1.7.2",
     "openai>=1.64.0",
     "sqlmodel>=0.0.22",
     "streamlit>=1.42.2",
