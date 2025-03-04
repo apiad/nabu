@@ -384,7 +384,7 @@ with st.sidebar:
 
     st.link_button(
         f"Buy a {pack} Credits Pack",
-        f"https://apiad.gumroad.com/l/nabu-{pack.split()[0]}?wanted=true",
+        f"https://apiad.gumroad.com/l/nabu-{pack}?wanted=true",
         icon="💸",
     )
 
