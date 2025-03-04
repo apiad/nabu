@@ -206,7 +206,7 @@ async def process_note(transcription: str, style: Style, processes: list[Process
 
 @app.post("/process")
 async def process(
-    email: EmailStr, token: str, file: UploadFile, style: str, processes: str
+    email: EmailStr, token: str, language:str, file: UploadFile, style: str, processes: str
 ) -> Note:
     with Session(engine) as session:
         user: User = session.get(User, email)
@@ -241,6 +241,7 @@ async def process(
         )
 
         transcription = await client.audio.transcriptions.create(
+            language=None if language == "auto" else language,
             model=TRANSCRIPTION_API_MODEL,
             file=audio,
             response_format="text",

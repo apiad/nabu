@@ -6,6 +6,128 @@ import httpx
 st.set_page_config("Nabu - Voice Notes", page_icon="🪄")
 
 
+LANGUAGES = {
+    "en": "english",
+    "zh": "chinese",
+    "de": "german",
+    "es": "spanish",
+    "ru": "russian",
+    "ko": "korean",
+    "fr": "french",
+    "ja": "japanese",
+    "pt": "portuguese",
+    "tr": "turkish",
+    "pl": "polish",
+    "ca": "catalan",
+    "nl": "dutch",
+    "ar": "arabic",
+    "sv": "swedish",
+    "it": "italian",
+    "id": "indonesian",
+    "hi": "hindi",
+    "fi": "finnish",
+    "vi": "vietnamese",
+    "he": "hebrew",
+    "uk": "ukrainian",
+    "el": "greek",
+    "ms": "malay",
+    "cs": "czech",
+    "ro": "romanian",
+    "da": "danish",
+    "hu": "hungarian",
+    "ta": "tamil",
+    "no": "norwegian",
+    "th": "thai",
+    "ur": "urdu",
+    "hr": "croatian",
+    "bg": "bulgarian",
+    "lt": "lithuanian",
+    "la": "latin",
+    "mi": "maori",
+    "ml": "malayalam",
+    "cy": "welsh",
+    "sk": "slovak",
+    "te": "telugu",
+    "fa": "persian",
+    "lv": "latvian",
+    "bn": "bengali",
+    "sr": "serbian",
+    "az": "azerbaijani",
+    "sl": "slovenian",
+    "kn": "kannada",
+    "et": "estonian",
+    "mk": "macedonian",
+    "br": "breton",
+    "eu": "basque",
+    "is": "icelandic",
+    "hy": "armenian",
+    "ne": "nepali",
+    "mn": "mongolian",
+    "bs": "bosnian",
+    "kk": "kazakh",
+    "sq": "albanian",
+    "sw": "swahili",
+    "gl": "galician",
+    "mr": "marathi",
+    "pa": "punjabi",
+    "si": "sinhala",
+    "km": "khmer",
+    "sn": "shona",
+    "yo": "yoruba",
+    "so": "somali",
+    "af": "afrikaans",
+    "oc": "occitan",
+    "ka": "georgian",
+    "be": "belarusian",
+    "tg": "tajik",
+    "sd": "sindhi",
+    "gu": "gujarati",
+    "am": "amharic",
+    "yi": "yiddish",
+    "lo": "lao",
+    "uz": "uzbek",
+    "fo": "faroese",
+    "ht": "haitian creole",
+    "ps": "pashto",
+    "tk": "turkmen",
+    "nn": "nynorsk",
+    "mt": "maltese",
+    "sa": "sanskrit",
+    "lb": "luxembourgish",
+    "my": "myanmar",
+    "bo": "tibetan",
+    "tl": "tagalog",
+    "mg": "malagasy",
+    "as": "assamese",
+    "tt": "tatar",
+    "haw": "hawaiian",
+    "ln": "lingala",
+    "ha": "hausa",
+    "ba": "bashkir",
+    "jw": "javanese",
+    "su": "sundanese",
+    "yue": "cantonese",
+}
+
+# language code lookup by name, with a few language aliases
+TO_LANGUAGE_CODE = {
+    **{language: code for code, language in LANGUAGES.items()},
+    "burmese": "my",
+    "valencian": "ca",
+    "flemish": "nl",
+    "haitian": "ht",
+    "letzeburgesch": "lb",
+    "pushto": "ps",
+    "panjabi": "pa",
+    "moldavian": "ro",
+    "moldovan": "ro",
+    "sinhalese": "si",
+    "castilian": "es",
+    "mandarin": "zh",
+}
+
+LANGUAGES = ["Auto"] + [l.title() for l in sorted(TO_LANGUAGE_CODE)]
+
 from streamlit_cookies_manager import CookieManager
 
 
@@ -127,10 +249,16 @@ with config_tab:
         st.write("These are possible styles for the note transcription.")
 
         config["styles"] = st.data_editor(
-            config["styles"], num_rows="dynamic", use_container_width=True, column_config={
+            config["styles"],
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
                 "name": st.column_config.TextColumn("Name"),
-                "description": st.column_config.TextColumn("Description", width="large", ),
-            }
+                "description": st.column_config.TextColumn(
+                    "Description",
+                    width="large",
+                ),
+            },
         )
 
     with st.expander("Processes"):
@@ -139,10 +267,13 @@ with config_tab:
         )
 
         config["processes"] = st.data_editor(
-            config["processes"], num_rows="dynamic", use_container_width=True, column_config={
+            config["processes"],
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
                 "name": st.column_config.TextColumn("Name"),
                 "prompt": st.column_config.TextColumn("Prompt", width="large"),
-            }
+            },
         )
 
     if st.button("Save config", icon="💾"):
@@ -186,6 +317,10 @@ with new_tab:
         audio = st.audio_input("Record new audio note")
 
     with st.expander("Configure note processing options"):
+        language = st.selectbox(
+            "Output language",
+            LANGUAGES,
+        )
         style = st.pills(
             "Style",
             [s["name"] for s in config["styles"]],
@@ -208,6 +343,7 @@ with new_tab:
                 email=username,
                 token=token,
                 style=style,
+                language=language.lower(),
                 processes=",".join(processing),
                 file=audio.read(),
             )
@@ -236,7 +372,9 @@ with st.sidebar:
 
     st.write("### Add credits")
 
-    st.write("Select a pack size to buy, then enter the license key you received after purchase.")
+    st.write(
+        "Select a pack size to buy, then enter the license key you received after purchase."
+    )
 
     pack = st.pills(
         "Pack",
